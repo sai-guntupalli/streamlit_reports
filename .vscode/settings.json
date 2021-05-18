@@ -1,0 +1,6 @@
+{
+    "python.pythonPath": "C:\\Users\\sai\\.conda\\envs\\streamlit_reports\\python.exe",
+    "python.formatting.provider": "black",
+    "python.formatting.blackPath": "C:\\Users\\sai\\.conda\\envs\\streamlit_reports\\Scripts\\black",
+    "editor.formatOnSave": true
+}
