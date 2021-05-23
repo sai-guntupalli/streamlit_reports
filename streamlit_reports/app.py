@@ -27,8 +27,38 @@ import datetime
 import ffn
 
 stocks_csv_path = "./data/stocks_list_with_cap_info.csv"
+# stocks_csv_path = STOCKS_WITH_CAP_INFO_PATH
 
 # st.set_option("deprecation.showPyplotGlobalUse", False)
+
+COLUMNS_TO_DISPLAY_IN_REPORTS_DF = [
+        "symbol",
+        # "industry",
+        # "cap",
+        # "close_price",
+        "1d",
+        "2d",
+        "3d",
+        "4d",
+        "5d",
+        "6d",
+        "7d",
+        "1m",
+        "2m",
+        "3m",
+        "4m",
+        "5m",
+        "6m",
+        "7m",
+        "8m",
+        "9m",
+        "10m",
+        "11m",
+        "1y",
+        "3y",
+        "5y",
+    ]
+
 
 
 def home(homepage_path, privacy_path, contact_path):
@@ -326,12 +356,33 @@ def stock_analysis():
     fig2 = _show_price_comparision_graph(data.rebase(), True)
     st.write(fig2)
 
+def _get_latest_report_date():
+    return "2021-05-21"
+
 
 def sectoral_analysis():
+    latest_report_date = _get_latest_report_date()
+    report_path = f"./reports/stock_perf_reports/{latest_report_date}/stocks_perf_{latest_report_date}.csv"
+    # streamlit_reports/streamlit_reports/reports/stock_perf_reports/2021-05-21/stocks_perf_2021-05-21.csv
     with st.beta_container():
-        st.title("Sectoral ANalysis")
-        st.info("Reports for Sectors is found here ")
-    st.write("Sectoral ANalysis TODO")
+        st.title(f"Daily Price Report- {latest_report_date}")
+        st.info("Reports for price performence")
+
+
+    df = _load_data(report_path)
+
+    selected_columns = st_tags(
+            label="### Select Columns to Display :",
+            # text="Press enter to add more",
+            value=COLUMNS_TO_DISPLAY_IN_REPORTS_DF,
+            suggestions=COLUMNS_TO_DISPLAY_IN_REPORTS_DF,
+            maxtags=30,
+            key="1",
+        )
+
+    # st.table(df)
+    df = df[selected_columns]
+    st.dataframe(df, 2000, 1000)
 
 
 def main():
@@ -344,7 +395,7 @@ def main():
         (
             "Home",
             "Stock Analysis",
-            "Sectoral Analysis",
+            "Daily Price Change Report",
             "Custom Stocks Analysis",
             "Todays Report",
         ),
@@ -367,7 +418,7 @@ def main():
         contact_us_ui(contact_path="./resources/contact_us.md")
     elif side_menu_selectbox == "Stock Analysis":
         stock_analysis()
-    elif side_menu_selectbox == "Sectoral Analysis":
+    elif side_menu_selectbox == "Daily Price Change Report":
         sectoral_analysis()
 
 

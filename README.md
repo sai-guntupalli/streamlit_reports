@@ -2,8 +2,8 @@
 
 ## ENV
 
-conda acreate -n streamlit_reports python=3.8
+conda create -n streamlit_reports python=3.8
 
 conda activate streamlit_reports
 
-pip install streamlit ffn yfinance nsetools pandas
+pip install streamlit streamlit_analytics streamlit_tags ffn yfinance nsetools pandas dash plotly seaborn matplotlib black

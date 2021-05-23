@@ -1,18 +1,40 @@
 from nsetools import Nse
 import nsetools
 import yfinance as yf
-import ffn
+import pathlib
 import csv
 from datetime import datetime
 import time
 import numpy as np
+import pandas as pd
+
+STOCKS_WITH_CAP_INFO_PATH = "./data/stocks_list_with_cap_info.csv"
 
 
-def get_stocks_list():
+def _load_cap_info_df():
+    df = pd.read_csv(STOCKS_WITH_CAP_INFO_PATH)
+    return df
+
+def _get_zip_dict_from_cap_info_df(col1, col2):
+    df = _load_cap_info_df()
+    stock_dict = dict(zip(df[col1], df[col2]))
+    return stock_dict
+
+
+def _get_stocks_list():
     nse = Nse()
     stocks_dict = nse.get_stock_codes()
     stocks_list = list(stocks_dict.keys())
     return stocks_list
+
+
+SYMBOL_WITH_CAP_DICT = _get_zip_dict_from_cap_info_df("Symbol", "Capitalization")
+SYMBOL_WITH_INDUSTRY_DICT = _get_zip_dict_from_cap_info_df("Symbol", "Industry")
+
+symbol_with_caps_list = list(SYMBOL_WITH_CAP_DICT.keys())
+symbol_with_industry_list = list(SYMBOL_WITH_INDUSTRY_DICT.keys())
+
+
 
 
 def percentage_change(todays, nthday):
@@ -24,6 +46,9 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
     failed_stocks = []
     fields = [
         "symbol",
+        "industry",
+        "cap",
+        "close_price",
         "1d",
         "2d",
         "3d",
@@ -107,7 +132,20 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
                     stock_perf_list.append(percent_change)
 
             if len(stock_perf_list) > 0:
+                cap_info = np.NaN
+                industry_info = np.NaN
                 stock_perf_list.insert(0, stock)
+
+                if stock in symbol_with_caps_list:
+                    cap_info = SYMBOL_WITH_CAP_DICT[stock]
+
+                if stock in symbol_with_industry_list:
+                    industry_info = SYMBOL_WITH_INDUSTRY_DICT[stock]
+                
+                stock_perf_list.insert(1, industry_info)
+                stock_perf_list.insert(2, cap_info)
+                stock_perf_list.insert(3,todays_close)
+
                 performence_data.append(stock_perf_list)
 
             counter += 1
@@ -141,12 +179,14 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
 
 
 if __name__ == "__main__":
-    stocks_list = get_stocks_list()
-    tdate = datetime.today().strftime("%Y-%m-%d")
+    stocks_list = _get_stocks_list()
+    tdate = str(datetime.today().strftime("%Y-%m-%d"))
     # date = d
-    root_drive_path = "reports/stock_perf_reports"
+    root_drive_path = "reports/stock_perf_reports/"+tdate
 
-    perf_report_path = root_drive_path + f"/{tdate}/new_stocks_perf_{tdate}.csv"
-    failed_stocks_path = root_drive_path + f"/{tdate}/new_failed_stocks_{tdate}.csv"
+    pathlib.Path(root_drive_path).mkdir(parents=True, exist_ok=True)
+
+    perf_report_path = root_drive_path + f"/stocks_perf_{tdate}.csv"
+    failed_stocks_path = root_drive_path + f"/failed_stocks_{tdate}.csv"
 
     get_past_price_performence(stocks_list[1:], perf_report_path, failed_stocks_path)
