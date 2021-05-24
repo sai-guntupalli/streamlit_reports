@@ -2,22 +2,33 @@
 
 The following features are expected to be released in future versions. 
 
-### ANOVA 
+### FUTURE PRICE PREDICTION
 
-- [Using Analysis of Variance with Digital Experimentation Data - Towards Data Science](https://towardsdatascience.com/using-analysis-of-variance-with-experimentation-data-40142980d5d8)
+- Pridict Future Stock Price.
 
-### Uplift Modeling
+### TREND ANALYSIS
 
-- [Uplift Modeling - Wikipedia](https://en.wikipedia.org/wiki/Uplift_modelling#Application_to_A/B_and_multivariate_testing)
+- Analyze the Trends in Stock Market.
+
+### STOCK SENTIMENT ANALYSIS
+
+- Analyze Stock sentiment based on the discussing in Stock forums, New Channels and Twitter.
+
+### CRYPTO CURRENCY ANAlYSIS
+
+- Crypto Analysis For Price And Volume Movements.
+
 
 ## Report An Issue 📝
 
-Mosco is an open-sourced project, and we love hearing from you. We welcome you to use the [GitHub issue tracker](https://github.com/luxin-tian/mosco_ab_test/issues) to report bugs or suggest features for Mosco developers. 
+Ponyglyph is an open-sourced project, and we love hearing from you. We welcome you to use the [GitHub issue tracker](https://github.com/sai-guntupalli/streamlit_reports/issues) to report bugs or suggest features for Ponyglyph developers. 
 
 ## Contact Us 🇨🇳
 
-CONTACT US ON : ---
+CONTACT ME ON : ---
+
+LinkedIn : https://www.linkedin.com/in/sai-sri-vatsava-guntupalli-53b203150/
 
 ```
-Made with enthusiasm. 
+Made with enthusiasm :)
 ```

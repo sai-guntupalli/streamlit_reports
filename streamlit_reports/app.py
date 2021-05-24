@@ -1,25 +1,12 @@
 """Renders the Generate Stock Reports Dashboard web app. Made with Streamlit. 
 """
-import os
 from datetime import datetime
 from plotly.express import data
 import streamlit as st
 import pandas as pd
-import numpy as np
-import scipy.stats
-
-# import plotly.express as px
+from glob import glob
 import plotly.graph_objects as go
 
-# import plotly.figure_factory as ff
-import plotly.tools as tls
-from plotly.subplots import make_subplots
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-import plotly.express as px
-
-# Import the hypothesis_testing.py module
 import streamlit_analytics
 
 from streamlit_tags import st_tags
@@ -29,36 +16,29 @@ import ffn
 stocks_csv_path = "./data/stocks_list_with_cap_info.csv"
 # stocks_csv_path = STOCKS_WITH_CAP_INFO_PATH
 
-# st.set_option("deprecation.showPyplotGlobalUse", False)
-
 COLUMNS_TO_DISPLAY_IN_REPORTS_DF = [
-        "symbol",
-        # "industry",
-        # "cap",
-        # "close_price",
-        "1d",
-        "2d",
-        "3d",
-        "4d",
-        "5d",
-        "6d",
-        "7d",
-        "1m",
-        "2m",
-        "3m",
-        "4m",
-        "5m",
-        "6m",
-        "7m",
-        "8m",
-        "9m",
-        "10m",
-        "11m",
-        "1y",
-        "3y",
-        "5y",
-    ]
-
+    "1d",
+    "2d",
+    "3d",
+    "4d",
+    "5d",
+    "6d",
+    "7d",
+    "1m",
+    "2m",
+    "3m",
+    "4m",
+    "5m",
+    "6m",
+    "7m",
+    "8m",
+    "9m",
+    "10m",
+    "11m",
+    "1y",
+    "3y",
+    "5y",
+]
 
 
 def home(homepage_path, privacy_path, contact_path):
@@ -196,8 +176,7 @@ def _get_years_ago_date(days_given):
     elif "y" in days_given:
         days = int(days_given.replace("y", "")) * 365
 
-    st.write("Selected Days :")
-    st.write(days)
+    st.write("Selected Days : " + str(days))
 
     n_years_ago = datetime.datetime.now() - datetime.timedelta(days=days)
     return n_years_ago.date()
@@ -227,9 +206,9 @@ def _show_price_comparision_graph(data_df, rebase=False):
 
     layout = go.Layout(
         title=layout_msg,
-        autosize=False,
-        width=1000,
-        height=600,
+        autosize=True,
+        width=1600,
+        height=800,
         # margin=go.layout.Margin(l=50, r=10, b=50, t=50, pad=4),
     )
     fig = go.Figure(data=traces, layout=layout)
@@ -330,6 +309,7 @@ def stock_analysis():
             "5 Years",
             "10 Years",
         ),
+        index=4,
     )
 
     time_period_dict = {
@@ -348,7 +328,10 @@ def stock_analysis():
     data = ffn.get(selected_stocks_nse, start=str(start_date))
     data.columns = selected_stocks
 
-    st.write(data)
+    display_df = st.checkbox("Display Obtained Data ?")
+
+    if display_df:
+        st.write(data)
 
     fig = _show_price_comparision_graph(data)
     st.write(fig)
@@ -356,8 +339,15 @@ def stock_analysis():
     fig2 = _show_price_comparision_graph(data.rebase(), True)
     st.write(fig2)
 
+
 def _get_latest_report_date():
-    return "2021-05-21"
+    root_path = "./reports/stock_perf_reports/*"
+    path = glob(root_path)
+    dates_folders = list(path)
+    res = [file.split("/")[-1] for file in dates_folders]
+    res.sort()
+
+    return res[-1]
 
 
 def sectoral_analysis():
@@ -365,24 +355,98 @@ def sectoral_analysis():
     report_path = f"./reports/stock_perf_reports/{latest_report_date}/stocks_perf_{latest_report_date}.csv"
     # streamlit_reports/streamlit_reports/reports/stock_perf_reports/2021-05-21/stocks_perf_2021-05-21.csv
     with st.beta_container():
-        st.title(f"Daily Price Report- {latest_report_date}")
+        st.title(f"Daily Returns Report - {latest_report_date}")
         st.info("Reports for price performence")
-
 
     df = _load_data(report_path)
 
+    industries = list(df["industry"].unique())[1:]
+    industries.insert(0, "All Industries")
+
+    caps = list(df["cap"].unique())[1:]
+    caps.insert(0, "All Caps")
+    # st.table(df)
+
+    st.write("### Select the Industry : ")
+    industry = st.selectbox("", industries, index=0)
+
+    if industry != "All Industries":
+        df = df[df["industry"] == industry]
+
+    st.write("### Select the Cap : ")
+    cap = st.selectbox("", caps, index=0)
+
+    if cap != "All Caps":
+        df = df[df["cap"] == cap]
+
     selected_columns = st_tags(
-            label="### Select Columns to Display :",
-            # text="Press enter to add more",
-            value=COLUMNS_TO_DISPLAY_IN_REPORTS_DF,
-            suggestions=COLUMNS_TO_DISPLAY_IN_REPORTS_DF,
-            maxtags=30,
-            key="1",
+        label="### Select Columns to Display :",
+        # text="Press enter to add more",
+        value=COLUMNS_TO_DISPLAY_IN_REPORTS_DF,
+        suggestions=COLUMNS_TO_DISPLAY_IN_REPORTS_DF,
+        maxtags=30,
+        key="1",
+    )
+    common_cols = [
+        "symbol",
+        "industry",
+        "cap",
+        "close_price",
+    ]
+
+    df = df[common_cols + selected_columns]
+
+    selected_stocks = list(df["symbol"])
+
+    st.dataframe(df, 2000, 1000)
+
+    display_graphs = st.checkbox("Display Price Charts ?")
+
+    if display_graphs:
+
+        selected_stocks_nse = _append_nse(selected_stocks)
+
+        st.write("## Select the Time Period : ")
+        time_period = st.radio(
+            "",
+            (
+                "1 Week",
+                "1 Month",
+                "3 Months",
+                "6 Months",
+                "1 Year",
+                "3 Years",
+                "5 Years",
+                "10 Years",
+            ),
         )
 
-    # st.table(df)
-    df = df[selected_columns]
-    st.dataframe(df, 2000, 1000)
+        time_period_dict = {
+            "1 Week": "7d",
+            "1 Month": "30d",
+            "3 Months": "3m",
+            "6 Months": "6m",
+            "1 Year": "1y",
+            "3 Years": "3y",
+            "5 Years": "5y",
+            "10 Years": "10y",
+        }
+
+        start_date = _get_years_ago_date(time_period_dict[time_period])
+
+        data = ffn.get(selected_stocks_nse, start=str(start_date))
+        data.columns = selected_stocks
+
+        display_df = st.checkbox("Display Obtained Data ?")
+
+        if display_df:
+            st.write(data)
+
+        fig = _show_price_comparision_graph(data)
+        st.write(fig)
+
+        fig2 = _show_price_comparision_graph(data.rebase(), True)
+        st.write(fig2)
 
 
 def main():
