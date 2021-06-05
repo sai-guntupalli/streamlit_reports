@@ -1,6 +1,9 @@
 """Renders the Generate Stock Reports Dashboard web app. Made with Streamlit. 
 """
 from datetime import datetime
+from os import write
+from re import L
+from blinker import base
 from plotly.express import data
 import streamlit as st
 import pandas as pd
@@ -12,9 +15,14 @@ import streamlit_analytics
 from streamlit_tags import st_tags
 import datetime
 import ffn
+from nsetools import Nse
+
+# from streamlit_reports import utils
+
+# from .utils import CommonUtils as cu
 
 stocks_csv_path = "./data/stocks_list_with_cap_info.csv"
-# stocks_csv_path = STOCKS_WITH_CAP_INFO_PATH
+# stocks_csv_path = cu.STOCKS_WITH_CAP_INFO_PATH
 
 COLUMNS_TO_DISPLAY_IN_REPORTS_DF = [
     "1d",
@@ -350,10 +358,51 @@ def _get_latest_report_date():
     return res[-1]
 
 
+def _apply_link_to_stock(stock):
+    base_url = f"""https://www.gateway-tt.in/trade?orderConfig=%5B%7B%22quantity%22%3A10%2C%22ticker%22%3A%22{stock}%22%7D%5D&cardsize=big&withSearch=true&withTT=true"""
+    return base_url
+
+
+def _add_tickertape_url_to_df(df):
+    df["Link"] = _apply_link_to_stock(df["symbol"])
+
+    return df
+
+
+def get_todays_report():
+    req_cols = [
+        "symbol",
+        "ltp",
+        "previousPrice",
+        "netPrice",
+        "tradedQuantity",
+        "turnoverInLakhs",
+    ]
+    nse = Nse()
+    st.markdown("## Todays Top Gainers and Top Loosers")
+    st.write("")
+    st.markdown("## Todays Top Gainers :")
+    top_gainers = nse.get_top_gainers()
+    gainer_df = pd.DataFrame(top_gainers)
+    # req_cols = gainer_df[req_cols]
+    st.write(gainer_df[req_cols])
+
+    st.markdown("## Todays Top Loosers :")
+    top_loosers = nse.get_top_losers()
+    looser_df = pd.DataFrame(top_loosers)
+    looser_df_rounded = looser_df.round(decimals=1)
+    # req_cols = looser_df_rounded.columns[:-2]
+    st.write(looser_df_rounded[req_cols])
+
+    # udf = _add_tickertape_url_to_df(looser_df_rounded)
+    looser_df_rounded["Link"] = looser_df_rounded["symbol"].apply(_apply_link_to_stock)
+    st.write(looser_df_rounded.to_html(escape=False), unsafe_allow_html=True)
+    # pass
+
+
 def sectoral_analysis():
     latest_report_date = _get_latest_report_date()
     report_path = f"./reports/stock_perf_reports/{latest_report_date}/stocks_perf_{latest_report_date}.csv"
-    # streamlit_reports/streamlit_reports/reports/stock_perf_reports/2021-05-21/stocks_perf_2021-05-21.csv
     with st.beta_container():
         st.title(f"Daily Returns Report - {latest_report_date}")
         st.info("Reports for price performence")
@@ -419,6 +468,7 @@ def sectoral_analysis():
                 "5 Years",
                 "10 Years",
             ),
+            index=4,
         )
 
         time_period_dict = {
@@ -458,10 +508,11 @@ def main():
         "Menu",
         (
             "Home",
+            "Todays Report",
             "Stock Analysis",
             "Daily Price Change Report",
             "Custom Stocks Analysis",
-            "Todays Report",
+            # "Todays Report",
         ),
     )
     if side_menu_selectbox == "Home":
@@ -479,7 +530,8 @@ def main():
         elif sub_menu_selectbox == "Enter Manually":
             _upload_data()
     elif side_menu_selectbox == "Todays Report":
-        contact_us_ui(contact_path="./resources/contact_us.md")
+        # contact_us_ui(contact_path="./resources/contact_us.md")
+        get_todays_report()
     elif side_menu_selectbox == "Stock Analysis":
         stock_analysis()
     elif side_menu_selectbox == "Daily Price Change Report":
