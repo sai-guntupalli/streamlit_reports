@@ -2,24 +2,17 @@
 """
 from datetime import datetime
 from os import write
-from re import L
-from blinker import base
 from plotly.express import data
 import streamlit as st
 import pandas as pd
 from glob import glob
 import plotly.graph_objects as go
-
+import pathlib
+import ffn
 import streamlit_analytics
-
 from streamlit_tags import st_tags
 import datetime
-import ffn
 from nsetools import Nse
-
-# from streamlit_reports import utils
-
-# from .utils import CommonUtils as cu
 
 stocks_csv_path = "./data/stocks_list_with_cap_info.csv"
 # stocks_csv_path = cu.STOCKS_WITH_CAP_INFO_PATH
@@ -52,20 +45,10 @@ COLUMNS_TO_DISPLAY_IN_REPORTS_DF = [
 def home(homepage_path, privacy_path, contact_path):
     """The home page."""
     with open(homepage_path, "r", encoding="utf-8") as homepage:
-        homepage = homepage.read().split("---Insert video---")
-        st.markdown(homepage[0], unsafe_allow_html=True)
-        col1, col2 = st.beta_columns([1, 1])
-        with col2:
-            st.video("https://www.youtube.com/watch?v=zFMgpxG-chM")
-        with col1:
-            st.image(
-                "https://images.ctfassets.net/zw48pl1isxmc/4QYN7VubAAgEAGs0EuWguw/165749ef2fa01c1c004b6a167fd27835/ab-testing.png",
-                use_column_width="auto",
-            )
-            st.text("Image source: Optimizely")
-        st.markdown(homepage[1], unsafe_allow_html=True)
+        homepage = homepage.read()
+    st.markdown(homepage, unsafe_allow_html=True)
     contact_us_ui(contact_path, if_home=True)
-    with st.beta_expander(label="Privacy Notice"):
+    with st.expander(label="Privacy Notice"):
         with open(privacy_path, "r", encoding="utf-8") as privacy:
             st.markdown(privacy.read())
 
@@ -86,7 +69,7 @@ def contact_us_ui(contact_path, if_home=False):
 def _load_data(filepath):
 
     df = None
-    with st.beta_container():
+    with st.container():
         df = pd.read_csv(filepath)
 
     return df
@@ -105,9 +88,7 @@ def _process_data(
 
 
 def _get_specific_stocks(df, cap="LARGE_CAP", industry="IT"):
-    # filter_df = df[(df.Capitalization == cap ) (df.Industry == industry)]
     filter_df = df.query(f"Industry == '{industry}' &  Capitalization == '{cap}'")
-
     res_dict = dict(zip(filter_df.Symbol, filter_df["Company Name"]))
     return res_dict
 
@@ -117,7 +98,7 @@ def _append_nse(stocks):
 
 
 def _upload_data():
-    with st.beta_container():
+    with st.container():
         st.write("## Upload Data to get the Reports")
         # st.header("CSV Files")
 
@@ -125,7 +106,7 @@ def _upload_data():
     vendor = "Zerodha"
 
     # Render file dropbox
-    with st.beta_expander("Upload data", expanded=True):
+    with st.expander("Upload data", expanded=True):
         how_to_load = st.selectbox(
             "How to access raw data? ", ("Zerodha", "Upstox", "Custom", "Sample data")
         )
@@ -144,33 +125,25 @@ def _upload_data():
 
         if vendor != "Sample":
             uploaded_file = st.file_uploader("Choose a CSV file")
-
     st.write(vendor)
-
     stocks_list = _get_stock_symbols_from_holdings_csv(uploaded_file, vendor)
-
+    st.write(stocks_list)
     return stocks_list
 
 
 def _get_stock_symbols_from_holdings_csv(uploaded_file, vendor):
     stock_symbols = []
-
     if uploaded_file is not None and vendor is not None:
-
         if vendor == "Zerodha":
             with st.spinner("Loading Zerodha Holdings..."):
                 df = pd.read_excel(uploaded_file, sheet_name="Equity")
-
             stock_symbols = list(df["Unnamed: 1"].dropna())[3:]
         elif vendor == "Custom":
             with st.spinner("Loading data..."):
                 df = _load_data(uploaded_file)
-
             stock_symbols = list(df["Symbol"].dropna())
-
     else:
         st.error("Please Enter a Valid CSV file!")
-
     return stock_symbols
 
 
@@ -183,9 +156,7 @@ def _get_years_ago_date(days_given):
         days = int(days_given.replace("m", "")) * 30
     elif "y" in days_given:
         days = int(days_given.replace("y", "")) * 365
-
     st.write("Selected Days : " + str(days))
-
     n_years_ago = datetime.datetime.now() - datetime.timedelta(days=days)
     return n_years_ago.date()
 
@@ -196,13 +167,10 @@ def _show_price_comparision_graph(data_df, rebase=False):
     max_date = data_df.index.max().date()
 
     layout_msg = f"Stocks Price comparision from {min_date} to {max_date}. ".title()
-
     if rebase:
         data_df = data_df.rebase()
         layout_msg = f"Stocks Price comparision from {min_date} to {max_date} with Price Rebased to 100.".title()
-
     traces = []
-
     for stock in list(data_df.columns):
         trace = go.Scatter(
             x=data_df.index,
@@ -211,7 +179,6 @@ def _show_price_comparision_graph(data_df, rebase=False):
             name=stock.upper(),
         )
         traces.append(trace)
-
     layout = go.Layout(
         title=layout_msg,
         autosize=True,
@@ -220,7 +187,6 @@ def _show_price_comparision_graph(data_df, rebase=False):
         # margin=go.layout.Margin(l=50, r=10, b=50, t=50, pad=4),
     )
     fig = go.Figure(data=traces, layout=layout)
-
     return fig
 
 
@@ -228,59 +194,62 @@ def stock_analysis():
     selected_stocks = []
     selected_stocks_nse = []
 
-    with st.beta_container():
+    with st.container():
         st.title("Stock Analysis")
         st.info("You can get Analysis reports for Stocks here. ")
 
     stocks_df = _load_data(stocks_csv_path)
     st.write("Stock DF")
     st.write(stocks_df)
-
     available_caps = list(stocks_df["Capitalization"].unique())
     available_sectors = list(stocks_df["Industry"].unique())
-
     st.write("## How do you like to Analyze : ")
     way_of_analysis = st.radio(
         "",
         (
             "Analyse Stocks based on Sectors and Capitalization",
+            "Analyse Stock Familes",
             "Analyse Custom Stocks",
             "Analyse Holdings",
         ),
     )
 
-    # st.write(go_with_sectors)
-
     if way_of_analysis == "Analyse Stocks based on Sectors and Capitalization":
-
         st.write("## Select Market Capitalization : ")
         selected_cap = st.selectbox(
             "",
             options=available_caps,
             index=0,
         )
-
         st.write("## Select Sector : ")
         selected_sec = st.selectbox(
             "",
             options=available_sectors,
             index=0,
         )
-
         selected_stocks_dict = _get_specific_stocks(
             stocks_df, selected_cap, selected_sec
         )
 
         st.write(f"## Stocks avalable in {selected_cap} - {selected_sec} ")
-
         selected_stocks = list(selected_stocks_dict.keys())
+        st.write(selected_stocks)
 
+    elif way_of_analysis == "Analyse Stock Familes":
+        families = ["TATA", "ADANI", "BIRLA", "HDFC", "BAJAJ"]
+        stock_symbols_dict = dict(zip(stocks_df["Company Name"], stocks_df["Symbol"]))
+        st.write("## Select Family of the Stocks : ")
+        selected_family = st.selectbox(
+            "",
+            options=families,
+            index=0,
+        )
+        selected_stocks = _get_family_stocks(selected_family, stock_symbols_dict)
+        st.write("Selected Stocks : ")
         st.write(selected_stocks)
 
     elif way_of_analysis == "Analyse Custom Stocks":
-
         stock_symbols_dict = dict(zip(stocks_df["Company Name"], stocks_df["Symbol"]))
-
         selected_stocks_full_names = st_tags(
             label="## Select Stocks to Analyse:",
             # text="Press enter to add more",
@@ -289,17 +258,13 @@ def stock_analysis():
             maxtags=10,
             key="1",
         )
-
         selected_stocks = [
             stock_symbols_dict[key.title()] for key in selected_stocks_full_names
         ]
-
         st.write(selected_stocks)
 
     else:
-
         selected_stocks = _upload_data()
-
         st.write(selected_stocks)
 
     selected_stocks_nse = _append_nse(selected_stocks)
@@ -348,13 +313,26 @@ def stock_analysis():
     st.write(fig2)
 
 
-def _get_latest_report_date():
-    root_path = "./reports/stock_perf_reports/*"
-    path = glob(root_path)
-    dates_folders = list(path)
-    res = [file.split("/")[-1] for file in dates_folders]
-    res.sort()
+def _get_family_stocks(family_name, stocks_dict):
+    stocks = []
 
+    for name, symbol in stocks_dict.items():
+        if family_name.lower() in name.lower():
+            if symbol.upper() == "ADANIGAS":
+                stocks.append("ATGL")
+            else:
+                stocks.append(symbol)
+    return stocks
+
+
+def _get_latest_report_date():
+    current_dir = pathlib.Path.cwd()
+    root_path = current_dir.joinpath("reports", "stock_perf_reports")
+    res = []
+    for path in root_path.iterdir():
+        if path.is_dir():
+            res.append(path.name)
+    res.sort()
     return res[-1]
 
 
@@ -395,15 +373,24 @@ def get_todays_report():
     st.write(looser_df_rounded[req_cols])
 
     # udf = _add_tickertape_url_to_df(looser_df_rounded)
-    looser_df_rounded["Link"] = looser_df_rounded["symbol"].apply(_apply_link_to_stock)
-    st.write(looser_df_rounded.to_html(escape=False), unsafe_allow_html=True)
+    # looser_df_rounded["Link"] = looser_df_rounded["symbol"].apply(_apply_link_to_stock)
+    # st.write(looser_df_rounded.to_html(escape=False), unsafe_allow_html=True)
     # pass
 
 
 def sectoral_analysis():
     latest_report_date = _get_latest_report_date()
-    report_path = f"./reports/stock_perf_reports/{latest_report_date}/stocks_perf_{latest_report_date}.csv"
-    with st.beta_container():
+    # print(latest_report_date)
+    current_dir = pathlib.Path.cwd()
+    # date = d
+    report_path = current_dir.joinpath(
+        "reports",
+        "stock_perf_reports",
+        latest_report_date,
+        f"stocks_perf_{latest_report_date}.csv",
+    )
+
+    with st.container():
         st.title(f"Daily Returns Report - {latest_report_date}")
         st.info("Reports for price performence")
 
@@ -414,8 +401,6 @@ def sectoral_analysis():
 
     caps = list(df["cap"].unique())[1:]
     caps.insert(0, "All Caps")
-    # st.table(df)
-
     st.write("### Select the Industry : ")
     industry = st.selectbox("", industries, index=0)
 
@@ -444,17 +429,11 @@ def sectoral_analysis():
     ]
 
     df = df[common_cols + selected_columns]
-
     selected_stocks = list(df["symbol"])
-
     st.dataframe(df, 2000, 1000)
-
     display_graphs = st.checkbox("Display Price Charts ?")
-
     if display_graphs:
-
         selected_stocks_nse = _append_nse(selected_stocks)
-
         st.write("## Select the Time Period : ")
         time_period = st.radio(
             "",
@@ -483,27 +462,23 @@ def sectoral_analysis():
         }
 
         start_date = _get_years_ago_date(time_period_dict[time_period])
-
         data = ffn.get(selected_stocks_nse, start=str(start_date))
         data.columns = selected_stocks
-
         display_df = st.checkbox("Display Obtained Data ?")
-
         if display_df:
             st.write(data)
-
         fig = _show_price_comparision_graph(data)
         st.write(fig)
-
         fig2 = _show_price_comparision_graph(data.rebase(), True)
         st.write(fig2)
 
 
 def main():
     """Add control flows to organize the UI sections."""
-    st.sidebar.image("./resources/logo.png", width=250)
+    # st.sidebar.image("./resources/logo.png", width=250)
+    st.sidebar.header("Ponyglyph")
     st.sidebar.write("")  # Line break
-    st.sidebar.header("Navigation")
+    # st.sidebar.header("Navigation")
     side_menu_selectbox = st.sidebar.radio(
         "Menu",
         (

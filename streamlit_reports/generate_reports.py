@@ -15,6 +15,7 @@ def _load_cap_info_df():
     df = pd.read_csv(STOCKS_WITH_CAP_INFO_PATH)
     return df
 
+
 def _get_zip_dict_from_cap_info_df(col1, col2):
     df = _load_cap_info_df()
     stock_dict = dict(zip(df[col1], df[col2]))
@@ -33,8 +34,6 @@ SYMBOL_WITH_INDUSTRY_DICT = _get_zip_dict_from_cap_info_df("Symbol", "Industry")
 
 symbol_with_caps_list = list(SYMBOL_WITH_CAP_DICT.keys())
 symbol_with_industry_list = list(SYMBOL_WITH_INDUSTRY_DICT.keys())
-
-
 
 
 def percentage_change(todays, nthday):
@@ -107,7 +106,7 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
             data = yf.download(
                 stock + ".NS",
                 period="max",
-                threads=True,
+                # threads=True,
             )
 
             data.sort_index(ascending=False, inplace=True)
@@ -141,10 +140,10 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
 
                 if stock in symbol_with_industry_list:
                     industry_info = SYMBOL_WITH_INDUSTRY_DICT[stock]
-                
+
                 stock_perf_list.insert(1, industry_info)
                 stock_perf_list.insert(2, cap_info)
-                stock_perf_list.insert(3,todays_close)
+                stock_perf_list.insert(3, todays_close)
 
                 performence_data.append(stock_perf_list)
 
@@ -179,14 +178,17 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
 
 
 if __name__ == "__main__":
+    import pathlib
+
     stocks_list = _get_stocks_list()
     tdate = str(datetime.today().strftime("%Y-%m-%d"))
+    current_dir = pathlib.Path.cwd()
     # date = d
-    root_drive_path = "reports/stock_perf_reports/"+tdate
+    root_drive_path = current_dir.joinpath("reports", "stock_perf_reports", tdate)
 
     pathlib.Path(root_drive_path).mkdir(parents=True, exist_ok=True)
 
-    perf_report_path = root_drive_path + f"/stocks_perf_{tdate}.csv"
-    failed_stocks_path = root_drive_path + f"/failed_stocks_{tdate}.csv"
+    perf_report_path = root_drive_path.joinpath(f"stocks_perf_{tdate}.csv")
+    failed_stocks_path = root_drive_path.joinpath(f"failed_stocks_{tdate}.csv")
 
     get_past_price_performence(stocks_list[1:], perf_report_path, failed_stocks_path)
