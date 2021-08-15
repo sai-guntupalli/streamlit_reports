@@ -14,16 +14,13 @@ from streamlit_tags import st_tags
 import datetime
 from nsetools import Nse
 
-stocks_csv_path = "./data/stocks_list_with_cap_info.csv"
+stocks_csv_path = "./data/nifty_450.csv"
+# stocks_csv_path = "./data/stocks_list_with_cap_info.csv"
+# stocks_csv_path = cu.STOCKS_WITH_CAP_INFO_PATH
 # stocks_csv_path = cu.STOCKS_WITH_CAP_INFO_PATH
 
 COLUMNS_TO_DISPLAY_IN_REPORTS_DF = [
     "1d",
-    "2d",
-    "3d",
-    "4d",
-    "5d",
-    "6d",
     "7d",
     "1m",
     "2m",
@@ -31,11 +28,6 @@ COLUMNS_TO_DISPLAY_IN_REPORTS_DF = [
     "4m",
     "5m",
     "6m",
-    "7m",
-    "8m",
-    "9m",
-    "10m",
-    "11m",
     "1y",
     "3y",
     "5y",
@@ -88,9 +80,9 @@ def _process_data(
 
 
 def _get_specific_stocks(df, cap="LARGE_CAP", industry="IT"):
-    filter_df = df.query(f"Industry == '{industry}' &  Capitalization == '{cap}'")
-    res_dict = dict(zip(filter_df.Symbol, filter_df["Company Name"]))
-    return res_dict
+    filter_df = df.query(f" SubSector == '{industry}'")
+    res_dict = dict(zip(filter_df.Ticker, filter_df["Name"]))
+    return (res_dict, filter_df)
 
 
 def _append_nse(stocks):
@@ -182,11 +174,43 @@ def _show_price_comparision_graph(data_df, rebase=False):
     layout = go.Layout(
         title=layout_msg,
         autosize=True,
-        width=1600,
-        height=800,
+        width=1100,
+        height=600,
         # margin=go.layout.Margin(l=50, r=10, b=50, t=50, pad=4),
     )
     fig = go.Figure(data=traces, layout=layout)
+    fig.update_layout(
+        # Shows gray line without grid, styling fonts, linewidths and more
+        xaxis=dict(
+            showline=True,
+            showgrid=False,
+            showticklabels=True,
+            linecolor="rgb(204, 204, 204)",
+            linewidth=2,
+            ticks="outside",
+            tickfont=dict(
+                family="Arial",
+                size=12,
+                color="rgb(82, 82, 82)",
+            ),
+        ),
+        # Turn off everything on y axis
+        yaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showline=False,
+            showticklabels=True,
+        ),
+        autosize=False,
+        margin=dict(
+            autoexpand=False,
+            l=100,
+            r=20,
+            t=110,
+        ),
+        showlegend=True,
+        plot_bgcolor="white",
+    )
     return fig
 
 
@@ -201,8 +225,8 @@ def stock_analysis():
     stocks_df = _load_data(stocks_csv_path)
     st.write("Stock DF")
     st.write(stocks_df)
-    available_caps = list(stocks_df["Capitalization"].unique())
-    available_sectors = list(stocks_df["Industry"].unique())
+    # available_caps = list(stocks_df["Capitalization"].unique())
+    available_sectors = list(stocks_df["SubSector"].unique())
     st.write("## How do you like to Analyze : ")
     way_of_analysis = st.radio(
         "",
@@ -215,41 +239,45 @@ def stock_analysis():
     )
 
     if way_of_analysis == "Analyse Stocks based on Sectors and Capitalization":
-        st.write("## Select Market Capitalization : ")
-        selected_cap = st.selectbox(
-            "",
-            options=available_caps,
-            index=0,
-        )
+        # st.write("## Select Market Capitalization : ")
+        # selected_cap = st.selectbox(
+        #     "",
+        #     options=available_caps,
+        #     index=0,
+        # )
         st.write("## Select Sector : ")
         selected_sec = st.selectbox(
             "",
             options=available_sectors,
             index=0,
         )
-        selected_stocks_dict = _get_specific_stocks(
-            stocks_df, selected_cap, selected_sec
+        selected_stocks_dict, selected_stocks_df = _get_specific_stocks(
+            stocks_df, None, selected_sec
         )
 
-        st.write(f"## Stocks avalable in {selected_cap} - {selected_sec} ")
+        st.write(f"## Stocks avalable in {selected_sec} ")
         selected_stocks = list(selected_stocks_dict.keys())
-        st.write(selected_stocks)
+        st.write(
+            selected_stocks_df[["Name", "Ticker", "ClosePrice", "MarketCap", "PERatio"]]
+        )
 
     elif way_of_analysis == "Analyse Stock Familes":
         families = ["TATA", "ADANI", "BIRLA", "HDFC", "BAJAJ"]
-        stock_symbols_dict = dict(zip(stocks_df["Company Name"], stocks_df["Symbol"]))
+        stock_symbols_dict = dict(zip(stocks_df["Name"], stocks_df["Ticker"]))
         st.write("## Select Family of the Stocks : ")
         selected_family = st.selectbox(
             "",
             options=families,
             index=0,
         )
-        selected_stocks = _get_family_stocks(selected_family, stock_symbols_dict)
+        selected_stocks, filter_df = _get_family_stocks(
+            selected_family, stock_symbols_dict, stocks_df
+        )
         st.write("Selected Stocks : ")
-        st.write(selected_stocks)
+        st.write(filter_df)
 
     elif way_of_analysis == "Analyse Custom Stocks":
-        stock_symbols_dict = dict(zip(stocks_df["Company Name"], stocks_df["Symbol"]))
+        stock_symbols_dict = dict(zip(stocks_df["Name"], stocks_df["Ticker"]))
         selected_stocks_full_names = st_tags(
             label="## Select Stocks to Analyse:",
             # text="Press enter to add more",
@@ -269,51 +297,55 @@ def stock_analysis():
 
     selected_stocks_nse = _append_nse(selected_stocks)
 
-    st.write("## Select the Time Period : ")
-    time_period = st.radio(
-        "",
-        (
-            "1 Week",
-            "1 Month",
-            "3 Months",
-            "6 Months",
-            "1 Year",
-            "3 Years",
-            "5 Years",
-            "10 Years",
-        ),
-        index=4,
-    )
+    display_price_graph = st.checkbox("Display Price Comparision Graph ?")
 
-    time_period_dict = {
-        "1 Week": "7d",
-        "1 Month": "30d",
-        "3 Months": "3m",
-        "6 Months": "6m",
-        "1 Year": "1y",
-        "3 Years": "3y",
-        "5 Years": "5y",
-        "10 Years": "10y",
-    }
+    if display_price_graph:
 
-    start_date = _get_years_ago_date(time_period_dict[time_period])
+        st.write("## Select the Time Period : ")
+        time_period = st.radio(
+            "",
+            (
+                "1 Week",
+                "1 Month",
+                "3 Months",
+                "6 Months",
+                "1 Year",
+                "3 Years",
+                "5 Years",
+                "10 Years",
+            ),
+            index=4,
+        )
 
-    data = ffn.get(selected_stocks_nse, start=str(start_date))
-    data.columns = selected_stocks
+        time_period_dict = {
+            "1 Week": "7d",
+            "1 Month": "30d",
+            "3 Months": "3m",
+            "6 Months": "6m",
+            "1 Year": "1y",
+            "3 Years": "3y",
+            "5 Years": "5y",
+            "10 Years": "10y",
+        }
 
-    display_df = st.checkbox("Display Obtained Data ?")
+        start_date = _get_years_ago_date(time_period_dict[time_period])
 
-    if display_df:
-        st.write(data)
+        data = ffn.get(selected_stocks_nse, start=str(start_date))
+        data.columns = selected_stocks
 
-    fig = _show_price_comparision_graph(data)
-    st.write(fig)
+        display_df = st.checkbox("Display Obtained Data ?")
 
-    fig2 = _show_price_comparision_graph(data.rebase(), True)
-    st.write(fig2)
+        if display_df:
+            st.write(data)
+
+        fig = _show_price_comparision_graph(data)
+        st.write(fig)
+
+        fig2 = _show_price_comparision_graph(data.rebase(), True)
+        st.write(fig2)
 
 
-def _get_family_stocks(family_name, stocks_dict):
+def _get_family_stocks(family_name, stocks_dict, stocks_data):
     stocks = []
 
     for name, symbol in stocks_dict.items():
@@ -322,7 +354,8 @@ def _get_family_stocks(family_name, stocks_dict):
                 stocks.append("ATGL")
             else:
                 stocks.append(symbol)
-    return stocks
+    filter_df = stocks_data[stocks_data["Ticker"].isin(stocks)]
+    return (stocks, filter_df)
 
 
 def _get_latest_report_date():

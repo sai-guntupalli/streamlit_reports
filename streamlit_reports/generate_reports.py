@@ -37,7 +37,8 @@ symbol_with_industry_list = list(SYMBOL_WITH_INDUSTRY_DICT.keys())
 
 
 def percentage_change(todays, nthday):
-    return ((todays - nthday) / nthday) * 100
+    increase = todays - nthday
+    return (increase / nthday) * 100
 
 
 def get_past_price_performence(stocks_list, file_path, file_path_failed):
@@ -106,7 +107,7 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
             data = yf.download(
                 stock + ".NS",
                 period="max",
-                # threads=True,
+                threads=True,
             )
 
             data.sort_index(ascending=False, inplace=True)
