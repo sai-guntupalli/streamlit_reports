@@ -13,6 +13,8 @@ import streamlit_analytics
 from streamlit_tags import st_tags
 import datetime
 from nsetools import Nse
+from st_aggrid import AgGrid
+
 
 stocks_csv_path = "./data/nifty_450.csv"
 # stocks_csv_path = "./data/stocks_list_with_cap_info.csv"
@@ -20,7 +22,6 @@ stocks_csv_path = "./data/nifty_450.csv"
 # stocks_csv_path = cu.STOCKS_WITH_CAP_INFO_PATH
 
 COLUMNS_TO_DISPLAY_IN_REPORTS_DF = [
-    "1d",
     "7d",
     "1m",
     "2m",
@@ -463,7 +464,10 @@ def sectoral_analysis():
 
     df = df[common_cols + selected_columns]
     selected_stocks = list(df["symbol"])
-    st.dataframe(df, 2000, 1000)
+    # st.dataframe(df.style.format({'close_price': '{:.1f}', '7d': '{:.1f}', '1m': '{:.1f}', '2m': '{:.1f}', '3m': '{:.1f}', '4m': '{:.1f}', '5m': '{:.1f}', '6m': '{:.1f}', '1y': '{:.1f}', '3y': '{:.1f}', '5y': '{:.1f}'}))
+    AgGrid(df)
+    # st.table(df.style.format("{:.2%}"), 2000, 1000)
+
     display_graphs = st.checkbox("Display Price Charts ?")
     if display_graphs:
         selected_stocks_nse = _append_nse(selected_stocks)

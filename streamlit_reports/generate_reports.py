@@ -3,10 +3,12 @@ import nsetools
 import yfinance as yf
 import pathlib
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import numpy as np
 import pandas as pd
+from horology import Timing
+import json
 
 STOCKS_WITH_CAP_INFO_PATH = "./data/stocks_list_with_cap_info.csv"
 
@@ -29,6 +31,7 @@ def _get_stocks_list():
     return stocks_list
 
 
+
 SYMBOL_WITH_CAP_DICT = _get_zip_dict_from_cap_info_df("Symbol", "Capitalization")
 SYMBOL_WITH_INDUSTRY_DICT = _get_zip_dict_from_cap_info_df("Symbol", "Industry")
 
@@ -41,7 +44,23 @@ def percentage_change(todays, nthday):
     return (increase / nthday) * 100
 
 
-def get_past_price_performence(stocks_list, file_path, file_path_failed):
+def get_nth_date_record(df, todays_date, nth_day):
+    nth_day_date = todays_date - timedelta(nth_day)
+    res_df  = pd.DataFrame()
+    while res_df.empty:
+        nth_day_weekdate = get_week_day(nth_day_date)
+        res_df = df.query(f"Date == '{nth_day_weekdate}'")
+        nth_day_date -= timedelta(1)
+    res_df_arr = res_df.to_numpy()
+    return (res_df_arr, nth_day_weekdate)
+
+def get_week_day(input_date):
+    while input_date.weekday() > 4: # Mon-Fri are 0-4
+        input_date -= timedelta(days=1)
+    return input_date
+
+
+def get_past_price_performence(stocks_list, file_path, file_path_failed, dates_reference_path):
     performence_data = []
     failed_stocks = []
     fields = [
@@ -49,12 +68,6 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
         "industry",
         "cap",
         "close_price",
-        "1d",
-        "2d",
-        "3d",
-        "4d",
-        "5d",
-        "6d",
         "7d",
         "1m",
         "2m",
@@ -73,12 +86,6 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
     ]
 
     days_to_check = [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
         7,
         30,
         60,
@@ -96,9 +103,10 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
         1825,
     ]
     counter = 0
+    dates_to_fetch = {}
     for stock in stocks_list:
         try:
-            if counter % 50 == 0:
+            if counter % 50 == 0 and counter >0:
                 print("sleeping ...")
                 time.sleep(10)
 
@@ -109,26 +117,33 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
                 period="max",
                 threads=True,
             )
+            
+            data.reset_index(inplace=True)
+            data['Date'] = pd.to_datetime(data['Date'], format='%Y-%m-%d')
+            data.sort_values('Date', ascending=False, inplace=True)
 
-            data.sort_index(ascending=False, inplace=True)
 
             data_arr = data.to_numpy()
-            # print(data_arr)
             data_arr_len = data_arr.shape[0]
-            print(data_arr_len)
+            print(f"Num of records : {data_arr_len}")
 
             todays_close = data_arr[0][4]
-            # print("today")
-            # print(todays_close)
+            todays_date_from_df = data_arr[0][0]
+
             if todays_close > 25:
                 for day in days_to_check:
+                    # print(f"calculating for the day : {day}")
                     if data_arr_len > day:
-                        nth_day_close = data_arr[day][4]
-                        # print(nth_day_close)
-                        percent_change = percentage_change(todays_close, nth_day_close)
+                        if day not in dates_to_fetch:
+                            data_rec, date_fetched = get_nth_date_record(data, todays_date_from_df, day )
+                            dates_to_fetch[day] = date_fetched
+                        else:
+                            data_rec= data.query(f"Date == '{dates_to_fetch[day]}'").to_numpy()
                     else:
-                        percent_change = np.NaN
+                            percent_change = np.NaN
 
+                    nth_day_close = data_rec[0][5]
+                    percent_change = round(percentage_change(todays_close, nth_day_close), 1)
                     stock_perf_list.append(percent_change)
 
             if len(stock_perf_list) > 0:
@@ -144,7 +159,7 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
 
                 stock_perf_list.insert(1, industry_info)
                 stock_perf_list.insert(2, cap_info)
-                stock_perf_list.insert(3, todays_close)
+                stock_perf_list.insert(3, round(todays_close, 1))
 
                 performence_data.append(stock_perf_list)
 
@@ -155,11 +170,17 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed):
             print(e)
             failed_stocks.append(stock)
             counter += 1
+    
+
+    formatted_dates_to_fetch = {key:str(value).split(" ")[0] for (key,value) in dates_to_fetch.items()}
+    with open(dates_reference_path, 'w') as convert_file:
+        convert_file.write(json.dumps(formatted_dates_to_fetch))
+
 
     # print(performence_data)
     with open(
         file_path,
-        "a",
+        "w",
         newline="",
         encoding="utf-8",
     ) as f:
@@ -191,5 +212,11 @@ if __name__ == "__main__":
 
     perf_report_path = root_drive_path.joinpath(f"stocks_perf_{tdate}.csv")
     failed_stocks_path = root_drive_path.joinpath(f"failed_stocks_{tdate}.csv")
+    dates_reference_path = root_drive_path.joinpath(f"dates_reference_{tdate}.json")
 
-    get_past_price_performence(stocks_list[1:], perf_report_path, failed_stocks_path)
+
+    # stocks_anamoly = ["XPROINDIA", "TTML", "RAJMET", "JINDALPHOT", "DBREALTY"]
+
+    with Timing(name='Time taken to generate the Report : ', unit='min'):
+        get_past_price_performence(stocks_list[1:], perf_report_path, failed_stocks_path, dates_reference_path)
+
