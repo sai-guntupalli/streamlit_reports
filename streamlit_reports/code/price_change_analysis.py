@@ -5,11 +5,12 @@ import streamlit as st
 import pandas as pd
 
 from streamlit_tags import st_tags
-import datetime
+from st_aggrid import JsCode
+
 from nsetools import Nse
-from st_aggrid import AgGrid
+from st_aggrid import AgGrid, GridOptionsBuilder
 import ffn
-from .utils import _append_nse, _get_years_ago_date, _load_data
+from .utils import _append_nse, _get_years_ago_date, _load_data, _convert_df
 from .graphs import _show_price_comparision_graph
 
 
@@ -27,15 +28,6 @@ COLUMNS_TO_DISPLAY_IN_REPORTS_DF = [
 ]
 
 
-# @st.cache(show_spinner=False)
-# def _load_data(filepath):
-
-#     df = None
-#     with st.container():
-#         df = pd.read_csv(filepath)
-
-#     return df
-
 def _get_latest_report_date():
     current_dir = pathlib.Path.cwd()
     root_path = current_dir.joinpath("reports", "stock_perf_reports")
@@ -46,6 +38,7 @@ def _get_latest_report_date():
     res.sort()
     return res[-1]
 
+# @st.cache(allow_output_mutation=True)
 def get_price_change_analysis():
     latest_report_date = _get_latest_report_date()
     # print(latest_report_date)
@@ -99,8 +92,50 @@ def get_price_change_analysis():
     df = df[common_cols + selected_columns]
     selected_stocks = list(df["symbol"])
     # st.dataframe(df.style.format({'close_price': '{:.1f}', '7d': '{:.1f}', '1m': '{:.1f}', '2m': '{:.1f}', '3m': '{:.1f}', '4m': '{:.1f}', '5m': '{:.1f}', '6m': '{:.1f}', '1y': '{:.1f}', '3y': '{:.1f}', '5y': '{:.1f}'}))
-    AgGrid(df)
-    # st.table(df.style.format("{:.2%}"), 2000, 1000)
+    
+    gb = GridOptionsBuilder.from_dataframe(df)
+
+    cellRenderer1=JsCode('''function(params) {return '<a href="https://www.screener.in/company/' + params.value + '/consolidated/" target="_blank">'+ params.value+'</a>'}''')
+
+    gb.configure_column("symbol",
+                            headerName="symbol",
+                            cellRenderer=cellRenderer1, checkboxSelection = True)
+
+    go  = gb.build()
+
+    go['rowSelection'] = "multiple"
+    go['rowMultiSelectWithClick'] = True
+    go['suppressRowClickSelection'] = False
+    go['groupSelectsFiltered'] = True
+
+    # print(go)
+
+
+    grid_response = AgGrid(df, gridOptions=go, allow_unsafe_jscode=True,)
+    # selected_rows = user_selected_df["data"]
+
+    csv = _convert_df(df)
+
+    st.download_button(
+   "Press to Download",
+   csv,
+   "file.csv",
+   "text/csv",
+   key='download-csv'
+)
+
+    # st.subheader("Returned grid data:") 
+    #returning as HTML table bc streamlit has issues when rendering dataframes with timedeltas:
+    # https://github.com/streamlit/streamlit/issues/3781
+    # st.markdown(grid_response['data'].to_html(), unsafe_allow_html=True)
+
+    st.subheader("grid selection:")
+    st.write(grid_response['selected_rows'])
+
+    # st.write("Filtered Df")
+
+    # st.write(selected_rows)
+
 
     display_graphs = st.checkbox("Display Price Charts ?")
     if display_graphs:

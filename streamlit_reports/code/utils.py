@@ -26,6 +26,9 @@ def _get_stocks_list():
     stocks_list = list(stocks_dict.keys())
     return stocks_list
 
+@st.cache
+def _convert_df(df):
+   return df.to_csv().encode('utf-8')
 
 def _append_nse(stocks):
     return [stock.upper() + ".NS" for stock in stocks]
