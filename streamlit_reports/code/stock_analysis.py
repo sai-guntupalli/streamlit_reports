@@ -4,7 +4,7 @@ import streamlit as st
 from streamlit_tags import st_tags
 import ffn
 from .graphs import _show_price_comparision_graph
-from .utils import _upload_data, _append_nse, _get_years_ago_date, _get_family_stocks, _load_data, _get_specific_stocks
+from .utils import  _append_nse, _get_years_ago_date, _get_family_stocks, _load_data, _get_specific_stocks
 
 
 stocks_csv_path = "./data/nifty_450.csv"
@@ -87,8 +87,8 @@ def get_stock_analysis():
         st.write(selected_stocks)
 
     else:
-        selected_stocks = _upload_data()
-        st.write(selected_stocks)
+        # selected_stocks = _upload_data()
+        st.write("TODO")
 
     selected_stocks_nse = _append_nse(selected_stocks)
 

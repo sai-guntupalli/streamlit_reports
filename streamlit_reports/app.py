@@ -11,7 +11,7 @@ from nsetools import Nse
 from st_aggrid import AgGrid
 
 # import  code.utils
-from code.utils import _upload_data
+from code.portfolio_analysis import load_portfolio_data
 from code.price_change_analysis import get_price_change_analysis
 from code.stock_analysis import get_stock_analysis
 
@@ -99,7 +99,7 @@ def main():
             "Todays Report",
             "Stock Analysis",
             "Daily Price Change Report",
-            "Custom Stocks Analysis",
+            "Portfolio Analysis"
             # "Todays Report",
         ),
     )
@@ -109,14 +109,15 @@ def main():
             privacy_path="./resources/privacy_notice.md",
             contact_path="./resources/contact_us.md",
         )
-    elif side_menu_selectbox == "Custom Stocks Analysis":
+    elif side_menu_selectbox == "Portfolio Analysis":
         sub_menu_selectbox = st.sidebar.radio(
             "Data source", ("Upload CSV File", "Enter Manually")
         )
         if sub_menu_selectbox == "Upload CSV File":
-            _upload_data()
+            load_portfolio_data()
         elif sub_menu_selectbox == "Enter Manually":
-            _upload_data()
+            # _upload_data()
+            pass
     elif side_menu_selectbox == "Todays Report":
         # contact_us_ui(contact_path="./resources/contact_us.md")
         get_todays_report()
@@ -124,6 +125,7 @@ def main():
         get_stock_analysis()
     elif side_menu_selectbox == "Daily Price Change Report":
         get_price_change_analysis()
+    
 
 
 if __name__ == "__main__":

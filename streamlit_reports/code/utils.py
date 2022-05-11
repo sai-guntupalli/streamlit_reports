@@ -1,8 +1,10 @@
+from numpy import NaN
 import pandas as pd
 from glob import glob
 import plotly.graph_objects as go
 import streamlit as st
 import pandas as pd
+import numpy as np
 
 import datetime
 from nsetools import Nse
@@ -68,6 +70,14 @@ def _load_data(filepath):
 
     return df
 
+def _load_data_without_cache(filepath):
+    df = None
+    with st.container():
+        df = pd.read_csv(filepath)
+
+    return df
+
+
 
 def _process_data(
     df, col, if_dropna, if_remove_outliers, outlier_lower_qtl, outlier_upper_qtl
@@ -86,50 +96,54 @@ def _get_specific_stocks(df, cap="LARGE_CAP", industry="IT"):
     res_dict = dict(zip(filter_df.Ticker, filter_df["Name"]))
     return (res_dict, filter_df)
 
-def _get_stock_symbols_from_holdings_csv(uploaded_file, vendor):
-    stock_symbols = []
-    if uploaded_file is not None and vendor is not None:
-        if vendor == "Zerodha":
-            with st.spinner("Loading Zerodha Holdings..."):
-                df = pd.read_excel(uploaded_file, sheet_name="Equity")
-            stock_symbols = list(df["Unnamed: 1"].dropna())[3:]
-        elif vendor == "Custom":
-            with st.spinner("Loading data..."):
-                df = _load_data(uploaded_file)
-            stock_symbols = list(df["Symbol"].dropna())
-    else:
-        st.error("Please Upload a Valid CSV file!")
-    return stock_symbols
 
-def _upload_data():
-    with st.container():
-        st.write("## Upload Data to get the Reports")
-        # st.header("CSV Files")
 
-    df = None
-    vendor = "Zerodha"
 
-    # Render file dropbox
-    with st.expander("Upload data", expanded=True):
-        how_to_load = st.selectbox(
-            "How to access raw data? ", ("Zerodha", "Upstox", "Custom", "Sample data")
-        )
-        if how_to_load == "Zerodha":
-            vendor = "Zerodha"
+#move to proper loc
 
-        elif how_to_load == "Upstox":
-            vendor = "Upstox"
 
-        elif how_to_load == "Custom":
-            vendor = "Custom"
+STOCKS_WITH_CAP_INFO_PATH = "./data/stocks_list_with_cap_info.csv"
 
-        elif how_to_load == "Sample data":
-            vendor = "Sample"
-            uploaded_file = "https://raw.githubusercontent.com/luxin-tian/mosco_ab_test/main/sample_data/cookie_cats.csv"
 
-        if vendor != "Sample":
-            uploaded_file = st.file_uploader("Choose a CSV file")
-    st.write(vendor)
-    stocks_list = _get_stock_symbols_from_holdings_csv(uploaded_file, vendor)
-    st.write(stocks_list)
+def _load_cap_info_df():
+    df = pd.read_csv(STOCKS_WITH_CAP_INFO_PATH)
+    return df
+
+def _get_zip_dict_from_cap_info_df(col1, col2):
+    df = _load_cap_info_df()
+    stock_dict = dict(zip(df[col1], df[col2]))
+    return stock_dict
+
+
+def _get_stocks_list():
+    nse = Nse()
+    stocks_dict = nse.get_stock_codes()
+    stocks_list = list(stocks_dict.keys())
     return stocks_list
+
+
+
+def get_stock_cap(stock):
+    stock = stock.split(".")[0]
+    cap_info = np.NaN
+    SYMBOL_WITH_CAP_DICT = _get_zip_dict_from_cap_info_df("Symbol", "Capitalization")
+    symbol_with_caps_list = list(SYMBOL_WITH_CAP_DICT.keys())
+
+    if stock in symbol_with_caps_list:
+        cap_info = SYMBOL_WITH_CAP_DICT[stock]
+
+    return cap_info
+
+def get_stock_industry(stock):
+    stock = stock.split(".")[0]
+    ind_info = np.NaN
+
+    SYMBOL_WITH_INDUSTRY_DICT = _get_zip_dict_from_cap_info_df("Symbol", "Industry")
+    symbol_with_industry_list = list(SYMBOL_WITH_INDUSTRY_DICT.keys())
+
+    if stock in symbol_with_industry_list:
+        ind_info = SYMBOL_WITH_INDUSTRY_DICT[stock]
+
+    return ind_info
+
+

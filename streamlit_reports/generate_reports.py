@@ -10,18 +10,20 @@ import pandas as pd
 from horology import Timing
 import json
 
-STOCKS_WITH_CAP_INFO_PATH = "./data/stocks_list_with_cap_info.csv"
+from code.utils import get_stock_cap, get_stock_industry
+
+# STOCKS_WITH_CAP_INFO_PATH = "./data/stocks_list_with_cap_info.csv"
 
 
-def _load_cap_info_df():
-    df = pd.read_csv(STOCKS_WITH_CAP_INFO_PATH)
-    return df
+# def _load_cap_info_df():
+#     df = pd.read_csv(STOCKS_WITH_CAP_INFO_PATH)
+#     return df
 
 
-def _get_zip_dict_from_cap_info_df(col1, col2):
-    df = _load_cap_info_df()
-    stock_dict = dict(zip(df[col1], df[col2]))
-    return stock_dict
+# def _get_zip_dict_from_cap_info_df(col1, col2):
+#     df = _load_cap_info_df()
+#     stock_dict = dict(zip(df[col1], df[col2]))
+#     return stock_dict
 
 
 def _get_stocks_list():
@@ -32,11 +34,11 @@ def _get_stocks_list():
 
 
 
-SYMBOL_WITH_CAP_DICT = _get_zip_dict_from_cap_info_df("Symbol", "Capitalization")
-SYMBOL_WITH_INDUSTRY_DICT = _get_zip_dict_from_cap_info_df("Symbol", "Industry")
+# SYMBOL_WITH_CAP_DICT = _get_zip_dict_from_cap_info_df("Symbol", "Capitalization")
+# SYMBOL_WITH_INDUSTRY_DICT = _get_zip_dict_from_cap_info_df("Symbol", "Industry")
 
-symbol_with_caps_list = list(SYMBOL_WITH_CAP_DICT.keys())
-symbol_with_industry_list = list(SYMBOL_WITH_INDUSTRY_DICT.keys())
+# symbol_with_caps_list = list(SYMBOL_WITH_CAP_DICT.keys())
+# symbol_with_industry_list = list(SYMBOL_WITH_INDUSTRY_DICT.keys())
 
 
 def percentage_change(todays, nthday):
@@ -151,11 +153,14 @@ def get_past_price_performence(stocks_list, file_path, file_path_failed, dates_r
                 industry_info = np.NaN
                 stock_perf_list.insert(0, stock)
 
-                if stock in symbol_with_caps_list:
-                    cap_info = SYMBOL_WITH_CAP_DICT[stock]
+                # if stock in symbol_with_caps_list:
+                #     cap_info = SYMBOL_WITH_CAP_DICT[stock]
 
-                if stock in symbol_with_industry_list:
-                    industry_info = SYMBOL_WITH_INDUSTRY_DICT[stock]
+                # if stock in symbol_with_industry_list:
+                #     industry_info = SYMBOL_WITH_INDUSTRY_DICT[stock]
+
+                cap_info = get_stock_cap(stock)
+                industry_info = get_stock_industry(stock)
 
                 stock_perf_list.insert(1, industry_info)
                 stock_perf_list.insert(2, cap_info)
@@ -218,5 +223,5 @@ if __name__ == "__main__":
     # stocks_anamoly = ["XPROINDIA", "TTML", "RAJMET", "JINDALPHOT", "DBREALTY"]
 
     with Timing(name='Time taken to generate the Report : ', unit='min'):
-        get_past_price_performence(stocks_list[1:], perf_report_path, failed_stocks_path, dates_reference_path)
+        get_past_price_performence(stocks_list[1:20], perf_report_path, failed_stocks_path, dates_reference_path)
 
